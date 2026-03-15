@@ -4,12 +4,12 @@ import { Share2, HelpCircle, Flame, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 
-import DailyIntegralDisplay, { getDailyProblem, getTodayDateString } from '../components/integrle/DailyIntegral';
-import CalculatorInput from '../components/Integrle/InputKeyboard.jsx';
-import Timer from '../components/integrle/Timer';
-import TipsModal from '../components/integrle/Tips';
-import ShareModal from '../components/integrle/Share';
-import ResultFeedback from '../components/integrle/Results';
+import DailyIntegralDisplay, { getDailyProblem, getTodayDateString } from '../components/Integrle/DailyIntegral';
+import CalculatorInput from '../components/Integrle/InputKeyboard';
+import Timer from '../components/Integrle/Timer';
+import TipsModal from '../components/Integrle/Tips';
+import ShareModal from '../components/Integrle/Share';
+import ResultFeedback from '../components/Integrle/Results';
 
 export default function Home() {
   const [answer, setAnswer] = useState('');
