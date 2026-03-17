@@ -44,7 +44,6 @@ export default function Home() {
             setSolveTime(s.last_solve_time || 0);
             setResult('correct');
             
-            // ADD THIS LINE:
             // Find today's entry in history to get the correct attempt count
             const todayEntry = s.solve_history?.find(h => h.date === today);
             if (todayEntry) {

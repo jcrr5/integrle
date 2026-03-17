@@ -77,7 +77,7 @@ export default function Stats() {
       {/* Header */}
       <div className="w-full max-w-md flex items-center justify-between mb-8">
         <Link
-          to={createPageUrl('Home')}
+          to={createPageUrl('')}
           className="p-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
         >
           <ArrowLeft className="w-5 h-5 opacity-60" />

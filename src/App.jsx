@@ -6,6 +6,8 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import { Analytics } from "@vercel/analytics/next"
+
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -70,8 +72,11 @@ function App() {
         <Router>
           <AuthenticatedApp />
         </Router>
-        {/* Try adding these props to force visibility */}
         <Toaster position="top-center" expand={true} richColors />
+        
+        {/* 2. Place the component here, just before the closing tag */}
+        <Analytics /> 
+        
       </QueryClientProvider>
     </AuthProvider>
   );
