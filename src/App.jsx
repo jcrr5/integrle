@@ -6,7 +6,7 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-import { Analytics } from "@vercel/analytics/next"
+import { Analytics } from "@vercel/analytics/react"
 
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -48,16 +48,18 @@ const AuthenticatedApp = () => {
           <MainPage />
         </LayoutWrapper>
       } />
-      {Object.entries(Pages).map(([path, Page]) => (
-        <Route
-          key={path}
-          path={`/${path}`}
-          element={
-            <LayoutWrapper currentPageName={path}>
-              <Page />
-            </LayoutWrapper>
-          }
-        />
+      {Object.entries(Pages)
+        .filter(([path]) => path !== 'Home') // Add this line!
+        .map(([path, Page]) => (
+          <Route
+            key={path}
+            path={`/${path}`}
+            element={
+              <LayoutWrapper currentPageName={path}>
+                <Page />
+              </LayoutWrapper>
+            }
+          />
       ))}
       <Route path="*" element={<PageNotFound />} />
     </Routes>
@@ -71,12 +73,10 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <AuthenticatedApp />
+          {}
+          <Analytics /> 
         </Router>
         <Toaster position="top-center" expand={true} richColors />
-        
-        {/* 2. Place the component here, just before the closing tag */}
-        <Analytics /> 
-        
       </QueryClientProvider>
     </AuthProvider>
   );
