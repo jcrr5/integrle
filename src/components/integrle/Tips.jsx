@@ -10,8 +10,8 @@ const TIPS = [
   },
   {
     icon: Calculator,
-    title: 'Toolset',
-    description: 'You may use a scientific calculator to help evaluate complex expressions.',
+    title: 'Tools',
+    description: 'You may use a scientific calculator to help with complex arithmetic.',
   },
   {
     icon: CheckCircle,

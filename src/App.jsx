@@ -49,7 +49,7 @@ const AuthenticatedApp = () => {
         </LayoutWrapper>
       } />
       {Object.entries(Pages)
-        .filter(([path]) => path !== 'Home') // Add this line!
+        .filter(([path]) => path !== 'Home')
         .map(([path, Page]) => (
           <Route
             key={path}

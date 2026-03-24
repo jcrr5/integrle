@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Copy, Share2 } from 'lucide-react';
 // REPLACED: Removed sonner, added shadcn hook
 import { useToast } from "@/components/ui/use-toast";
-import { getDailyProblem } from './DailyIntegral';
+import { getDailyProblem } from '../Integrle/ProblemList';
 
 export default function ShareModal({ isOpen, onClose, solveTime, streak, attempts }) {
   const problem = getDailyProblem();
