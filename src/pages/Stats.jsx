@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { getTodayDateString } from '../components/Integrle/ProblemList';
+import { getTodayDateString } from '../components/integrle/ProblemList';
 
 export default function Stats() {
   const [stats, setStats] = useState(null);

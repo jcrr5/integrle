@@ -3,8 +3,8 @@ import { motion } from 'framer-motion';
 import { Share2, HelpCircle, Flame, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { getDailyProblem, getTodayDateString } from '../components/Integrle/ProblemList';import CalculatorInput from '../components/integrle/InputKeyboard';
-
+import { getDailyProblem, getTodayDateString } from '../components/integrle/ProblemList';
+import CalculatorInput from '../components/integrle/InputKeyboard';
 import DailyIntegralDisplay from '../components/integrle/DailyIntegral';
 import Timer from '../components/integrle/Timer';
 import TipsModal from '../components/integrle/Tips';

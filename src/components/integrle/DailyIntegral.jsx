@@ -1,7 +1,7 @@
 import React from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
-import { getDailyProblem } from '../Integrle/ProblemList'; // Ensure path is correct
+import { getDailyProblem } from '../integrle/ProblemList';
 
 export default function DailyIntegralDisplay() {
   const problem = getDailyProblem();
