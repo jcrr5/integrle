@@ -1,50 +1,62 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import axios from 'axios';
+import { auth } from '../lib/firebase'; // Ensure this path points to your firebase.js
+import { signInAnonymously, onAuthStateChanged, signOut } from 'firebase/auth';
 
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  // We set "isAuthenticated" to true by default so you can actually see your app
-  const [user, setUser] = useState({ name: "Local User", email: "user@example.com" });
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(false);
-  const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(false);
+  const [user, setUser] = useState(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true); // Start as true while checking Firebase
   const [authError, setAuthError] = useState(null);
-  const [appPublicSettings, setAppPublicSettings] = useState({ id: 'local', public_settings: {} });
 
-  // Mocking the app state check
-  const checkAppState = async () => {
-    setIsLoadingPublicSettings(false);
-    setIsLoadingAuth(false);
+  useEffect(() => {
+    // 1. Listen for Auth Changes
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setIsLoadingAuth(true);
+      
+      if (firebaseUser) {
+        // User is signed in (either Anonymous or Permanent)
+        setUser(firebaseUser);
+        setIsLoadingAuth(false);
+      } else {
+        // No user exists, so let's sign them in Anonymously by default
+        try {
+          await signInAnonymously(auth);
+          // onAuthStateChanged will trigger again once sign-in completes
+        } catch (error) {
+          console.error("Anonymous Auth Failed:", error);
+          setAuthError(error);
+          setIsLoadingAuth(false);
+        }
+      }
+    });
+
+    // Cleanup listener on unmount
+    return () => unsubscribe();
+  }, []);
+
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      setUser(null);
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   };
 
-  const checkUserAuth = async () => {
-    setIsAuthenticated(true);
-  };
-
-  const logout = () => {
-    setUser(null);
-    setIsAuthenticated(false);
-    console.log("Logged out locally");
-  };
-
-  const navigateToLogin = () => {
-    console.log("Login redirect triggered (bypassed)");
-  };
+  // Helper to check if the current user is just a "Guest"
+  const isAnonymous = user?.isAnonymous || false;
 
   return (
     <AuthContext.Provider value={{ 
       user, 
-      isAuthenticated, 
+      isAnonymous,
+      isAuthenticated: !!user, // Helper: true if user object exists
       isLoadingAuth,
-      isLoadingPublicSettings,
       authError,
-      appPublicSettings,
       logout,
-      navigateToLogin,
-      checkAppState
     }}>
-      {children}
+      {!isLoadingAuth && children} 
     </AuthContext.Provider>
   );
 };

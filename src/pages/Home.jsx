@@ -4,6 +4,11 @@ import { Share2, HelpCircle, Flame, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { getDailyProblem, getTodayDateString } from '../components/integrle/ProblemList';
+import { useAuth } from '@/lib/AuthContext';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+
+// Components
 import CalculatorInput from '../components/integrle/InputKeyboard';
 import DailyIntegralDisplay from '../components/integrle/DailyIntegral';
 import Timer from '../components/integrle/Timer';
@@ -12,6 +17,7 @@ import ShareModal from '../components/integrle/Share';
 import ResultFeedback from '../components/integrle/Results';
 
 export default function Home() {
+  const { user } = useAuth();
   const [answer, setAnswer] = useState('');
   const [result, setResult] = useState(null);
   const [solved, setSolved] = useState(false);
@@ -28,79 +34,80 @@ export default function Home() {
   const today = getTodayDateString();
 
   useEffect(() => {
-    loadStats();
-  }, []);
+    if (user) loadStatsFromCloud();
+  }, [user]);
 
-  // REPLACED: Now uses localStorage
-    const loadStats = () => {
-        const savedStats = localStorage.getItem('integrle_user_stats');
-        if (savedStats) {
-            const s = JSON.parse(savedStats);
-            setStats(s);
-            setStreak(s.current_streak || 0);
-            if (s.last_solved_date === today) {
-            setSolved(true);
-            setTimerRunning(false);
-            setSolveTime(s.last_solve_time || 0);
-            setResult('correct');
-            
-            // Find today's entry in history to get the correct attempt count
-            const todayEntry = s.solve_history?.find(h => h.date === today);
-            if (todayEntry) {
-                setAttempts(todayEntry.attempts || 1);
-            }
-            }
-        }
-    };
+  const loadStatsFromCloud = async () => {
+    const userRef = doc(db, 'users', user.uid);
+    const docSnap = await getDoc(userRef);
+    
+    let currentData = null;
+
+    if (docSnap.exists()) {
+      currentData = docSnap.data();
+    } else {
+      // MIGRATION: Check if they have old local data
+      const localData = localStorage.getItem('integrle_user_stats');
+      if (localData) {
+        currentData = JSON.parse(localData);
+        await setDoc(userRef, currentData); // Upload to cloud for the first time
+        localStorage.removeItem('integrle_user_stats'); // Cleanup
+      }
+    }
+
+    if (currentData) {
+      setStats(currentData);
+      setStreak(currentData.current_streak || 0);
+      if (currentData.last_solved_date === today) {
+        setSolved(true);
+        setTimerRunning(false);
+        setSolveTime(currentData.last_solve_time || 0);
+        setResult('correct');
+        const todayEntry = currentData.solve_history?.find(h => h.date === today);
+        if (todayEntry) setAttempts(todayEntry.attempts || 1);
+      }
+    }
+  };
 
   const handleSubmit = async () => {
     if (!answer || solved) return;
     
     const userAnswer = parseFloat(answer);
-    const correctAnswer = problem.answer;
     const newAttempts = attempts + 1;
     setAttempts(newAttempts);
 
-    if (Math.abs(userAnswer - correctAnswer) < 0.005) {
+    if (Math.abs(userAnswer - problem.answer) < 0.005) {
       setResult('correct');
       setSolved(true);
       setTimerRunning(false);
       const finalTime = timeRef.current;
       setSolveTime(finalTime);
 
-      // Calculate streak
+      // Streak Logic
       let newStreak = 1;
-      if (stats) {
-        const lastDate = stats.last_solved_date;
-        if (lastDate) {
-          const last = new Date(lastDate);
-          const todayDate = new Date(today);
-          const diffDays = Math.floor((todayDate.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
-          if (diffDays === 1) {
-            newStreak = (stats.current_streak || 0) + 1;
-          } else if (diffDays === 0) {
-            newStreak = stats.current_streak || 1;
-          }
-        }
+      if (stats?.last_solved_date) {
+        const lastDate = new Date(stats.last_solved_date);
+        const todayDate = new Date(today);
+        const diffDays = Math.floor((todayDate.getTime() - lastDate.getTime()) / 86400000);
+        if (diffDays === 1) newStreak = (stats.current_streak || 0) + 1;
+        else if (diffDays === 0) newStreak = stats.current_streak;
       }
       setStreak(newStreak);
 
       const historyEntry = { date: today, time_seconds: finalTime, correct: true, attempts: newAttempts };
-      const existingHistory = stats?.solve_history || [];
-
-      // REPLACED: Saving to localStorage 
+      
       const updatedStats = {
-        ...stats,
         current_streak: newStreak,
         best_streak: Math.max(newStreak, stats?.best_streak || 0),
         total_solved: (stats?.total_solved || 0) + 1,
         last_solved_date: today,
         last_solve_time: finalTime,
-        solve_history: [...existingHistory, historyEntry],
+        solve_history: arrayUnion(historyEntry)
       };
 
-      localStorage.setItem('integrle_user_stats', JSON.stringify(updatedStats));
-      setStats(updatedStats);
+      // Save to Firebase
+      await setDoc(doc(db, 'users', user.uid), updatedStats, { merge: true });
+      setStats(prev => ({...prev, ...updatedStats, solve_history: [...(prev?.solve_history || []), historyEntry]}));
       
     } else {
       setResult('wrong');

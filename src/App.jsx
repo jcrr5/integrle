@@ -5,9 +5,7 @@ import { pagesConfig } from './pages.config'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
-import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import { Analytics } from "@vercel/analytics/react"
-
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -18,29 +16,24 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   : <>{children}</>;
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingAuth, authError } = useAuth();
 
-  // Show loading spinner while checking app public settings or auth
-  if (isLoadingPublicSettings || isLoadingAuth) {
+  if (isLoadingAuth) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+      <div className="fixed inset-0 flex items-center justify-center bg-slate-50 dark:bg-[#0a0a0a]">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-[#5B9E7A] rounded-full animate-spin"></div>
       </div>
     );
   }
 
-  // Handle authentication errors
   if (authError) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    } else if (authError.type === 'auth_required') {
-      // Redirect to login automatically
-      navigateToLogin();
-      return null;
-    }
+    return (
+      <div className="fixed inset-0 flex items-center justify-center p-4 text-center">
+        <p className="text-red-500">Authentication Error. Please refresh the page.</p>
+      </div>
+    );
   }
 
-  // Render the main app
   return (
     <Routes>
       <Route path="/" element={
@@ -51,21 +44,14 @@ const AuthenticatedApp = () => {
       {Object.entries(Pages)
         .filter(([path]) => path !== 'Home')
         .map(([path, Page]) => (
-          <Route
-            key={path}
-            path={`/${path}`}
-            element={
-              <LayoutWrapper currentPageName={path}>
-                <Page />
-              </LayoutWrapper>
-            }
-          />
+          <Route key={path} path={`/${path}`} element={
+              <LayoutWrapper currentPageName={path}><Page /></LayoutWrapper>
+          }/>
       ))}
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
 };
-
 
 function App() {
   return (
@@ -73,7 +59,6 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <AuthenticatedApp />
-          {}
           <Analytics /> 
         </Router>
         <Toaster position="top-center" expand={true} richColors />
@@ -82,4 +67,4 @@ function App() {
   );
 }
 
-export default App
+export default App;

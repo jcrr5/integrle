@@ -1,55 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  BarChart3, 
-  Flame, 
-  Target, 
-  Clock, 
-  ChevronLeft,
-  Calendar,
-  Trophy
-} from 'lucide-react';
+import { BarChart3, Flame, Target, Clock, ChevronLeft, Calendar, Trophy } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { getTodayDateString } from '../components/integrle/ProblemList';
+import { useAuth } from '@/lib/AuthContext';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
 export default function Stats() {
+  const { user } = useAuth();
   const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedStats = localStorage.getItem('integrle_user_stats');
-    if (savedStats) {
-      let s = JSON.parse(savedStats);
-      
-      // --- STREAK RESET LOGIC ---
+    if (user) fetchStats();
+  }, [user]);
+
+  const fetchStats = async () => {
+    const userRef = doc(db, 'users', user.uid);
+    const docSnap = await getDoc(userRef);
+
+    if (docSnap.exists()) {
+      let s = docSnap.data();
       const todayStr = getTodayDateString();
       const lastSolvedStr = s.last_solved_date;
 
       if (lastSolvedStr && lastSolvedStr !== todayStr) {
         const lastDate = new Date(lastSolvedStr);
         const todayDate = new Date(todayStr);
-        
-        // Calculate difference in days (24 * 60 * 60 * 1000 ms per day)
-        const diffTime = todayDate.getTime() - lastDate.getTime();
-        const diffDays = Math.floor(diffTime / 86400000);
+        const diffDays = Math.floor((todayDate.getTime() - lastDate.getTime()) / 86400000);
 
-        // If the gap is more than 1 day, they missed yesterday.
         if (diffDays > 1) {
           s.current_streak = 0;
-          localStorage.setItem('integrle_user_stats', JSON.stringify(s));
+          await updateDoc(userRef, { current_streak: 0 });
         }
       }
-      // --------------------------
-
       setStats(s);
     }
-  }, []);
+    setLoading(false);
+  };
 
-  // Helper to format time
   const formatTime = (seconds) => {
     if (!seconds) return '--:--';
     const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
