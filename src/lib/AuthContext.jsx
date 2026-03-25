@@ -1,59 +1,82 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { auth } from '../lib/firebase'; // Ensure this path points to your firebase.js
-import { signInAnonymously, onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from './firebase';
+import { 
+  signInAnonymously, 
+  onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+  linkWithPopup
+} from 'firebase/auth';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true); // Start as true while checking Firebase
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [authError, setAuthError] = useState(null);
 
   useEffect(() => {
-    // 1. Listen for Auth Changes
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setIsLoadingAuth(true);
-      
       if (firebaseUser) {
-        // User is signed in (either Anonymous or Permanent)
+        // User is logged in (could be Anonymous or Google)
         setUser(firebaseUser);
-        setIsLoadingAuth(false);
       } else {
-        // No user exists, so let's sign them in Anonymously by default
+        // 1. SIGN OUT DETECTED: 
+        // We manually clear the user first so the UI resets
+        setUser(null); 
+        
         try {
+          // 2. BLANK SLATE: Create a brand new anonymous identity
           await signInAnonymously(auth);
-          // onAuthStateChanged will trigger again once sign-in completes
         } catch (error) {
           console.error("Anonymous Auth Failed:", error);
-          setAuthError(error);
-          setIsLoadingAuth(false);
         }
       }
+      setIsLoadingAuth(false);
     });
 
-    // Cleanup listener on unmount
     return () => unsubscribe();
   }, []);
+
+  const loginWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    
+    try {
+      // If they are currently a guest, link the guest ID to the Google ID
+      if (user?.isAnonymous) {
+        await linkWithPopup(user, provider);
+        // Firebase automatically updates the 'user' object to no longer be anonymous
+      } else {
+        await signInWithPopup(auth, provider);
+      }
+    } catch (error) {
+      if (error.code === 'auth/credential-already-in-use') {
+        // If the Google account is already linked to another ID, just log into that one
+        await signInWithPopup(auth, provider);
+      }
+    }
+  };
 
   const logout = async () => {
     try {
       await signOut(auth);
-      setUser(null);
+      setUser(null); 
     } catch (error) {
-      console.error("Logout failed:", error);
+      console.error("Logout error:", error);
     }
   };
-
-  // Helper to check if the current user is just a "Guest"
   const isAnonymous = user?.isAnonymous || false;
 
   return (
     <AuthContext.Provider value={{ 
       user, 
       isAnonymous,
-      isAuthenticated: !!user, // Helper: true if user object exists
+      isAuthenticated: !!user,
       isLoadingAuth,
       authError,
+      loginWithGoogle,
       logout,
     }}>
       {!isLoadingAuth && children} 
