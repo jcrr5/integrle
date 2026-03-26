@@ -2,13 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Share2, HelpCircle, Flame, BarChart3, 
-  LogIn, LogOut, CheckCircle2 
+  LogIn, LogOut, CheckCircle2, Clock 
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getDailyProblem, getTodayDateString } from '../components/integrle/ProblemList';
 import { useAuth } from '@/lib/AuthContext';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, arrayUnion } from 'firebase/firestore';
+import { 
+  doc, getDoc, setDoc, updateDoc, arrayUnion, serverTimestamp 
+} from 'firebase/firestore';
 
 // Components
 import CalculatorInput from '../components/integrle/InputKeyboard';
@@ -44,14 +46,12 @@ export default function Home() {
   useEffect(() => {
     const handleAuthChange = async () => {
       if (user) {
-        // When a user links or signs in, we load the new ID's data
+        // Don't reset anything here! Just load.
         await loadStatsFromCloud();
       } else {
-        // Total reset for the UI
         resetUI();
       }
     };
-
     handleAuthChange();
   }, [user?.uid]); // Use uid as the trigger to detect the actual ID swap
   
@@ -66,43 +66,79 @@ export default function Home() {
     setTimerRunning(true);
     timeRef.current = 0;
   };
+
   const loadStatsFromCloud = async () => {
-    try {
-      const userRef = doc(db, 'users', user.uid);
-      const docSnap = await getDoc(userRef);
-      
-      let currentData = null;
+  try {
+    if (!user?.uid) return;
+    const userRef = doc(db, 'users', user.uid);
+    const docSnap = await getDoc(userRef);
+    
+    let currentData = null;
 
-      if (docSnap.exists()) {
-        currentData = docSnap.data();
+    if (docSnap.exists()) {
+      currentData = docSnap.data();
+    } else {
+      // MIGRATION: Check for old local data
+      const localData = localStorage.getItem('integrle_user_stats');
+      if (localData) {
+        currentData = JSON.parse(localData);
+        await setDoc(userRef, currentData); 
+        localStorage.removeItem('integrle_user_stats');
       } else {
-        // MIGRATION: Check if they have old local data
-        const localData = localStorage.getItem('integrle_user_stats');
-        if (localData) {
-          currentData = JSON.parse(localData);
-          await setDoc(userRef, currentData); 
-          localStorage.removeItem('integrle_user_stats');
-        }
+        // NEW USER FALLBACK: Initialize basic object so the UI can render
+        currentData = {
+          current_streak: 0,
+          solve_history: [],
+          best_streak: 0
+        };
+        // Optional: Pre-create the doc in Firestore
+        await setDoc(userRef, currentData);
       }
-
-      if (currentData) {
-        setStats(currentData);
-        setStreak(currentData.current_streak || 0);
-        
-        // Check if already solved today
-        if (currentData.last_solved_date === today) {
-          setSolved(true);
-          setTimerRunning(false);
-          setSolveTime(currentData.last_solve_time || 0);
-          setResult('correct');
-          const todayEntry = currentData.solve_history?.find(h => h.date === today);
-          if (todayEntry) setAttempts(todayEntry.attempts || 1);
-        }
-      }
-    } catch (error) {
-      console.error("Error loading cloud stats:", error);
     }
-  };
+
+    // This block now ALWAYS runs because currentData is never null
+    setStats(currentData);
+    setStreak(currentData.current_streak || 0);
+    
+    const todayEntry = currentData.solve_history?.find(h => h.date === today);
+
+    if (todayEntry) {
+      // CASE 1: ALREADY SOLVED
+      setSolved(true);
+      setTimerRunning(false);
+      setSolveTime(todayEntry.time_seconds || 0);
+      setResult('correct');
+      setAttempts(todayEntry.attempts || 1);
+    } else {
+      // CASE 2: NOT SOLVED - SYNC THE TIMER
+      const serverStart = currentData.current_session_start;
+      const sessionDate = currentData.current_session_date;
+
+      // SAFETY: Only call .toDate() if serverStart actually exists
+      if (serverStart && typeof serverStart.toDate === 'function' && sessionDate === today) {
+        const startTime = serverStart.toDate().getTime();
+        const now = Date.now();
+        const elapsed = Math.max(0, Math.floor((now - startTime) / 1000));
+        
+        timeRef.current = elapsed;
+        setSolveTime(elapsed);
+      } else {
+        // FIRST LOOK or NEW DAY: Record the start time
+        await updateDoc(userRef, {
+          current_session_start: serverTimestamp(),
+          current_session_date: today
+        });
+        timeRef.current = 0;
+        setSolveTime(0);
+      }
+      setTimerRunning(true);
+    }
+  } catch (error) {
+    console.error("Error loading/syncing cloud stats:", error);
+    // Even on error, set basic stats so the screen isn't blank
+    setStats({ current_streak: 0, solve_history: [] });
+  }
+};
 
   const handleSubmit = async () => {
     if (!answer || solved) return;
@@ -191,7 +227,7 @@ export default function Home() {
     <button
       onClick={loginWithGoogle}
       /* Added 'flex items-center h-full' to center vertically */
-      className="px-2 py-1 flex items-center h-8 rounded-lg hover:bg-[#5B9E7A]/10 transition-colors relative"
+      className="px-2 py-2 flex items-center h-5 hover:bg-[#5B9E7A]/10 transition-colors relative"
     >
       <span className="text-[10px] font-medium italic text-[#5B9E7A] whitespace-nowrap leading-none -mt-0.5">
         sign in
@@ -217,19 +253,28 @@ export default function Home() {
     <BarChart3 className="w-5 h-5 opacity-60" />
   </Link>
 </div>
-</div>
-
+  </div>
       {/* Timer & Streak */}
       <div className="w-full max-w-md flex items-center justify-between mb-2 px-2">
-        <Timer
-          key={user ? user.uid : 'guest'} // 👈 THIS IS THE FIX
-          isRunning={timerRunning}
-          onTimeUpdate={(t) => { timeRef.current = t; }}
-          solvedTime={solved ? solveTime : undefined}
-        />
+        {/* If stats exists, show the timer. If not, show a '00:00' placeholder */}
+        {stats ? (
+          <Timer
+            key={user?.uid || 'guest'}
+            initialTime={solveTime || 0} 
+            isRunning={timerRunning}
+            onTimeUpdate={(t) => { timeRef.current = t; }}
+            solvedTime={solved ? solveTime : undefined}
+          />
+        ) : (
+          <div className="flex items-center gap-2 text-sm font-mono opacity-30">
+            <Clock className="w-4 h-4" />
+            <span>00:00</span>
+          </div>
+        )}
+        
         <div className="flex items-center gap-1.5 text-sm font-medium">
           <Flame className="w-4 h-4 text-orange-400" />
-          <span>{streak}</span>
+          <span>{stats?.current_streak ?? 0}</span>
         </div>
       </div>
 
