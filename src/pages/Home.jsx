@@ -221,29 +221,28 @@ export default function Home() {
     <span className="text-[#5B9E7A]">integrle</span>
   </h1>
 
-{/* Right Side: Auth + Stats (Fixed Width) */}
-<div className="flex items-center justify-end gap-1 w-24">
-  {!user || user.isAnonymous ? (
-    <button
-      onClick={loginWithGoogle}
-      /* Added 'flex items-center h-full' to center vertically */
-      className="px-2 py-2 flex items-center h-5 hover:bg-[#5B9E7A]/10 transition-colors relative"
-    >
-      <span className="text-[10px] font-medium italic text-[#5B9E7A] whitespace-nowrap leading-none -mt-0.5">
-        sign in
-      </span>
-      {/* Tiny notification dot */}
-      <span className="absolute top-1.5 right-0.5 w-1.5 h-1.5 bg-orange-500 rounded-full border border-white dark:border-[#1a1a1a]" />
-    </button>
-  ) : (
-    <button
-      onClick={() => setShowSignOut(true)} // Open the custom popup instead of window.confirm
-      className="px-2 py-1 flex items-center h-8 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-    >
-      <span className="text-[10px] font-medium italic opacity-40 hover:opacity-100 transition-opacity whitespace-nowrap leading-none -mt-0.5">
-        sign out
-      </span>
-    </button>
+  {/* Right Side: Auth + Stats (Fixed Width) */}
+  <div className="flex items-center justify-end gap-1 w-24">
+    {!user || user.isAnonymous ? (
+      <button
+        onClick={loginWithGoogle}
+        className="px-2 flex items-center h-8 hover:bg-[#5B9E7A]/10 transition-colors relative rounded-lg"
+      >
+        <span className="text-[10px] font-medium italic text-[#5B9E7A] whitespace-nowrap leading-none -mt-0.5">
+          sign in
+        </span>
+        {/* Tiny notification dot */}
+        <span className="absolute top-1.5 right-0.5 w-1.5 h-1.5 bg-orange-500 rounded-full border border-white dark:border-[#1a1a1a]" />
+      </button>
+    ) : (
+      <button
+        onClick={() => setShowSignOut(true)} // Open the custom popup instead of window.confirm
+        className="px-2 py-1 flex items-center h-8 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+      >
+        <span className="text-[10px] font-medium italic opacity-40 hover:opacity-100 transition-opacity whitespace-nowrap leading-none -mt-0.5">
+          sign out
+        </span>
+      </button>
   )}
 
   <Link
@@ -289,57 +288,29 @@ export default function Home() {
         <DailyIntegralDisplay />
       </motion.div>
 
-      {/* Feedback */}
-      <div className="w-full max-w-md mb-2 min-h-[44px]">
-        <ResultFeedback result={result} />
+      {/* Feedback & Solution Section */}
+      <div className="w-full max-w-md mb-4 min-h-[44px]">
+        <ResultFeedback 
+          result={result} 
+          problem={problem} 
+          solved={solved} 
+        />
       </div>
 
-      {/* Input or Solution Video */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="w-full max-w-md"
-      >
-        {!solved ? (
+      {/* Calculator Input - Hide it if solved */}
+      {!solved && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md"
+        >
           <CalculatorInput
             value={answer}
             onChange={setAnswer}
             disabled={solved}
           />
-        ) : (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="w-full"
-          >
-            <a 
-              href={`https://www.youtube.com/watch?v=${problem.videoId}`} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="block group"
-            >
-              <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-[#A8D5BA]/30 shadow-lg transition-transform group-hover:scale-[1.02]">
-                <img 
-                  src={`https://img.youtube.com/vi/${problem.videoId}/mqdefault.jpg`} 
-                  alt="Solution Walkthrough"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black/20 flex items-center justify-center group-hover:bg-black/10 transition-colors">
-                  <div className="w-16 h-11 bg-[#FF0000] rounded-xl flex items-center justify-center shadow-md transition-all group-hover:scale-110">
-                    <div className="w-0 h-0 border-t-[8px] border-t-transparent border-l-[14px] border-l-white border-b-[8px] border-b-transparent ml-1" />
-                  </div>
-                </div>
-                <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg text-[10px] text-white font-bold uppercase tracking-wider">
-                  Watch Solution
-                </div>
-              </div>
-            </a>
-            <p className="text-center text-xs opacity-50 mt-3 italic">
-              Nice work! Watch the walkthrough for this integral.
-            </p>
-          </motion.div>
-        )}
+        </motion.div>
+      )}
 
         {/* Buttons */}
         <div className="mt-4 flex gap-3 max-w-[280px] mx-auto">
@@ -359,7 +330,7 @@ export default function Home() {
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={() => setShowShare(true)}
-              className="flex-1 h-12 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2
+              className="flex-1 px-2 h-12 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2
                 bg-[#A8D5BA] hover:bg-[#96CDAB] text-[#1a3a28]
                 shadow-sm hover:shadow-md"
             >
@@ -368,14 +339,13 @@ export default function Home() {
             </motion.button>
           )}
         </div>
-      </motion.div>
 
       <TipsModal isOpen={showTips} onClose={() => setShowTips(false)} />
       <ShareModal
         isOpen={showShare}
         onClose={() => setShowShare(false)}
         solveTime={solveTime}
-        streak={streak}
+        streak={stats?.current_streak ?? 0} // 👈 Use the synced cloud value
         attempts={attempts}
       />
       <SignOutPopup 

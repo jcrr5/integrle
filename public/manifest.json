@@ -1,6 +1,7 @@
 {
   "short_name": "Integrle",
   "name": "Integrle: Daily Calculus Challenge",
+  "description": "Master calculus one integral at a time with the daily Integrle challenge.",
   "icons": [
     {
       "src": "favicon.ico",
@@ -10,17 +11,28 @@
     {
       "src": "logo192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
-  "theme_color": "#FAF6F0",
+  "display_override": ["window-controls-overlay"],
+  "theme_color": "#5B9E7A",
   "background_color": "#FAF6F0",
-  "orientation": "portrait"
+  "orientation": "portrait",
+  "categories": ["education", "games"],
+  "shortcuts": [
+    {
+      "name": "Today's Challenge",
+      "url": "/",
+      "description": "Solve today's daily integral"
+    }
+  ]
 }
